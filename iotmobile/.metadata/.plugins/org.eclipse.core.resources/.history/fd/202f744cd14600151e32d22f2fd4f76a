@@ -1,0 +1,343 @@
+// ----------------------------------------------
+// Javascript/jquery for app startup index.html
+// ----------------------------------------------
+//
+// -----------------------------------------------------------
+// Set height of container to height of window
+// min-height supports small devices that cannot fit
+// entire container on 1 screen
+// -----------------------------------------------------------
+$(".contentContainer").css("min-height",$(window).height() );
+
+// -----------------------------------------------------------
+// Collapse menu after item is clicked
+// -----------------------------------------------------------
+$(".nav a").on("click", function(){
+   $(".nav").find(".active").removeClass("active");
+   $(this).parent().addClass("active");
+   $(".collapse").collapse('hide');
+});
+
+// -----------------------------------------------------------
+// Called when window is resized
+// -----------------------------------------------------------
+window.addEventListener('resize', function(event){
+
+});
+
+//------------------------------------------
+// Globals
+//------------------------------------------
+
+options = {
+  enableHighAccuracy: true,
+  timeout: 1000,
+  maximumAge: 0
+};
+
+var save2filestring = "csv"; //Global variable for sensor readings in csv format.
+var gpssavestring = "";
+var sensavestring = "";
+
+var randomScalingFactor = function(){ return Math.round(Math.random()*30)};
+var s1 = randomScalingFactor();
+var s2 = randomScalingFactor();
+var s3 = randomScalingFactor();
+var s4 = randomScalingFactor();
+var s5 = randomScalingFactor();
+var s6 = randomScalingFactor();
+var s7 = randomScalingFactor();
+var s8 = randomScalingFactor();
+var s9 = randomScalingFactor();
+var s10 = randomScalingFactor();
+var nxt = 1;
+
+
+var barChartData = {
+	//labels : [s1.toString(),s2.toString(),s3.toString(),s4.toString(),s5.toString(),s6.toString(),s7.toString(),s8.toString(),s9.toString(),s10.toString()],
+	labels : ["","","","","","","","","",""],
+	datasets : [
+		{
+			fillColor : "rgba(220,120,220,0.5)",
+			strokeColor : "rgba(220,120,220,0.8)",
+			highlightFill: "rgba(220,120,220,0.75)",
+			highlightStroke: "rgba(220,120,220,1)",
+			data : [s1,s2,s3,s4,s5,s6,s7,s8,s9,s10]
+		}
+	]
+
+}
+
+//------------------------------------------
+// Functions triggered after page loaded
+//------------------------------------------
+jQuery(window).load(function () {
+	navigator.geolocation.watchPosition(onGeoSuccess, onGeoError, options);
+	var ctx = document.getElementById("canvas").getContext("2d");
+	window.myBar = new Chart(ctx).Line(barChartData, {
+		animation: false,
+	    scaleOverride: true,
+	    scaleSteps: 15,
+	    scaleStepWidth: 2,
+	    scaleStartValue: 0,
+		responsive : true
+	});
+});
+
+//------------------------------------------
+// Distance between to lat/long locations
+//------------------------------------------
+
+function distance_on_geoid( lat1,  lon1,  lat2,  lon2) {
+    var M_PI = 0.0174532925; //radians/degree
+	// Convert degrees to radians
+	lat1 = lat1 * M_PI;
+	lon1 = lon1 * M_PI;
+ 
+	lat2 = lat2 * M_PI;
+	lon2 = lon2 * M_PI;
+ 
+	// radius of earth in metres
+	var r = 6378100;
+
+	// P
+	var rho1 = r * Math.cos(lat1);
+	var z1 = r * Math.sin(lat1);
+	var x1 = rho1 * Math.cos(lon1);
+	var y1 = rho1 * Math.sin(lon1);
+ 
+	// Q
+	var rho2 = r * Math.cos(lat2);
+	var z2 = r * Math.sin(lat2);
+	var x2 = rho2 * Math.cos(lon2);
+	var y2 = rho2 * Math.sin(lon2);
+ 
+	// Dot product
+	var dot = (x1 * x2 + y1 * y2 + z1 * z2);
+	var cos_theta = dot / (r * r);
+ 
+	var theta = Math.acos(cos_theta);
+ 
+	// Distance in Metres
+	return r * theta;
+}	
+
+//--------------------------------------------
+// onGeoSuccess Geolocation
+//--------------------------------------------
+function onGeoSuccess(position) {
+	if ( onGeoSuccess.busy == undefined ) {
+		onGeoSuccess.busy = 0;		
+		onGeoSuccess.mph = 0;
+		var speed = "";
+		onGeoSuccess.latitude = onGeoSuccess.latitude;
+		onGeoSuccess.longitude = onGeoSuccess.longitude;
+	}
+	if(onGeoSuccess.busy == 0 ) {
+		onGeoSuccess.busy = 1;
+
+		var distance = distance_on_geoid(onGeoSuccess.latitude, 
+										onGeoSuccess.longitude, 
+										position.coords.latitude, 
+										position.coords.longitude);
+	    var time_s = (position.timestamp - onGeoSuccess.timestamp) / 1000.0;
+
+	    if(time_s > 0) {
+	        onGeoSuccess.mph = ((distance * 0.000621371) / time_s) * 3600; //miles/meter & hours/second conversions
+        }
+
+	    //Save this set of values for next time									
+		onGeoSuccess.latitude = position.coords.latitude;
+		onGeoSuccess.longitude = position.coords.longitude;
+		onGeoSuccess.timestamp = position.timestamp;
+		
+		var latt = position.coords.latitude.toFixed(7).toString();
+		var long = position.coords.longitude.toFixed(7).toString();
+		//var speed = (position.coords.speed * 2.23694).toFixed(1).toString();
+		speed = onGeoSuccess.mph.toFixed(1).toString();
+		var altitude = (position.coords.altitude * 3.28084).toFixed(0).toString();
+		$("#Lat").html(latt.substring(0, 11));
+		$("#Lon").html(long.substring(0, 12));
+		$("#Speed").html(speed);
+		//$("#Altitude").html(altitude);
+		$("#Altitude").html(time_s);
+		//$("#Heading").html(position.coords.heading);
+		$("#Heading").html(distance.toFixed(4).toString());
+		$("#GpsTimestamp").html(position.timestamp);
+		gpssavestring = position.timestamp + "," 
+		              + latt.substring(0, 11) 
+		              + "," + long.substring(0, 12)
+		              + "," + speed
+		              + "," + altitude;
+		updateWeatherSensorData();
+		onGeoSuccess.busy = 0;
+	}
+	//save2filestring += "\n";
+	//saveData2File();
+}
+
+//--------------------------------------------
+// onGeoError Callback receives a PositionError object
+//--------------------------------------------
+function onGeoError(error) {
+	$("#GpsTimestamp").html( 'Failed GPS');
+}
+
+//--------------------------------------------
+//Update WeatherSensor Data
+//--------------------------------------------
+function updateWeatherSensorData() {
+	requestURL = "http://192.168.22.1:9703/?request=GetSensors";
+	if ( updateWeatherSensorData.timeout == undefined ) {
+		updateWeatherSensorData.timeout = 0;
+		updateWeatherSensorData.busy = 0;
+	}
+	//Get Weather Sensor Value
+	$.ajax({
+		url: requestURL,
+		error: function(error){
+			if(updateWeatherSensorData.timeout++ <10) {
+				setTimeout(updateWeatherSensorData, 1000);
+			}
+			else {
+				updateWeatherSensorData.timeout = 0;
+			}
+		},
+		success: function(thedata){
+		    if(updateWeatherSensorData.busy == 0) {
+		        updateWeatherSensorData.busy = 1;
+				$("#tempBaro").html(thedata.B_Temperature);
+				$("#presBaro").html(thedata.B_Pressure);
+				$("#humidity").html(thedata.DH_Humidity);
+				$("#systime").html(thedata.SYS_Time);
+				$("#sysheap").html(thedata.SYS_Heap);
+				$("#sysloop").html(thedata.SYS_Loopcnt);
+				sensavestring = "," + thedata.B_Temperature 
+								+ "," + thedata.DH_Temperature
+								+ "," + thedata.B_Pressure
+								+ "," + thedata.DH_Humidity
+								+ "," + thedata.SYS_Time
+								+ "," + thedata.SYS_Heap
+								+ "," + thedata.SYS_Loopcnt + "\n";
+		        saveData2File();
+		        updateWeatherSensorData.busy = 0;
+		    }
+			updateWeatherSensorData.timeout = 0;
+		},
+		timeout: 7000 // sets timeout to 7 seconds
+	});
+}
+//--------------------------------------------
+//Update Save Data to File 
+//--------------------------------------------
+function saveData2File() {
+	window.requestFileSystem(LocalFileSystem.PERSISTENT, 0, gotFS, fail);
+}
+function gotFS(fileSystem) {
+    fileSystem.root.getFile("mydata/dsa.csv", {create: true, exclusive: false}, gotFileEntry, fail);
+}
+
+function gotFileEntry(fileEntry) {
+    fileEntry.createWriter(gotFileWriter, fail);
+}
+
+function gotFileWriter(writer) {
+    if(gotFileWriter.started == undefined) {
+        gotFileWriter.started = 0;
+        gotFileWriter.tosave = "initial";
+    }
+    if(gotFileWriter.started!=1234) {
+        if(writer.length>0) {
+            writer.truncate(0);
+        }
+	    writer.seek(0);
+	    writer.write("timestamp,lat,lon,spd,alt,btmp,dtmp,bp,dh,syst,sysh,syslp\n");
+        gotFileWriter.started=1234;
+    }
+    if(gotFileWriter.tosave != gpssavestring) {
+        save2filestring = gpssavestring + sensavestring;
+        gotFileWriter.tosave = gpssavestring; 
+        writer.seek(writer.length);
+        writer.write(save2filestring);
+    }
+}
+
+function fail(error) {
+    //console.log(error.code);
+}
+
+//--------------------------------------------
+//Update GUI Clock
+//--------------------------------------------
+function updateClock() {
+	var now = new Date(), // current date
+		months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+	var hour = now.getHours() > 12 ? now.getHours() - 12 : now.getHours();
+		hour = hour < 10 ? '0' + hour : hour;
+	var ampm = now.getHours() > 12 ? ' PM' : ' AM';
+	var secd = now.getSeconds() < 10 ? '0' + now.getSeconds() : now.getSeconds();
+	var minu = now.getMinutes() < 10 ? '0' + now.getMinutes() : now.getMinutes();
+		time = hour + ':' + minu + ':' + secd + ampm;
+		timeloc =time + '  California, USA';
+		// a cleaner way than string concatenation
+		date = [now.getDate(),
+				months[now.getMonth()],
+				now.getFullYear()].join(' ');
+
+	// set the content of the element with the ID date & time
+	 $(".date").html("Date: " + date);
+	 $(".time").html("Time: " + timeloc);
+	 $("#timenow").html(time);
+	 //saveData2File();
+}
+	//--------------------------------------------
+	//updateSpeed
+	//--------------------------------------------
+	function updateSpeed() {
+		s1 = s2;
+		s2 = s3;
+		s3 = s4;
+		s4 = s5;
+		s5 = s6;
+		s6 = s7;
+		s7 = s8;
+		s8 = s9;
+		s9 = s10;
+		s10+= nxt;
+		if(s10==30) {
+		    nxt=-1;
+		}
+		if(s10==0) {
+		    nxt=1;
+		}
+		window.myBar.datasets[0].points[0].value = s1;
+		window.myBar.datasets[0].points[1].value = s2;
+		window.myBar.datasets[0].points[2].value = s3;
+		window.myBar.datasets[0].points[3].value = s4;
+		window.myBar.datasets[0].points[4].value = s5;
+		window.myBar.datasets[0].points[5].value = s6;
+		window.myBar.datasets[0].points[6].value = s7;
+		window.myBar.datasets[0].points[7].value = s8;
+		window.myBar.datasets[0].points[8].value = s9;
+		window.myBar.datasets[0].points[9].value = s10;
+		window.myBar.update();
+		$("#curspeed").html("Current Speed (mph): " + s10);
+	}
+
+
+//--------------------------------------------
+//Periodic tasks (1 sec interval)
+//--------------------------------------------
+
+window.setInterval(function() {
+	updateClock();
+    updateSpeed();
+}, 1000);
+
+//--------------------------------------------
+// Cordova is ready (Callback)
+//--------------------------------------------
+function onDeviceReady() {
+	//alert('ready /n');
+}
+
