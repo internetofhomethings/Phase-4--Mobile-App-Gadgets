@@ -114,8 +114,11 @@ Phase 4: Mobile App Gadgets:  August 23, 2015
 Changes:
 
 1. Three real-time data visualization screens added.
+
 ---> 1. Speedometer
+
 ---> 2. Clock
+
 ---> 3. Compass
 
 2. Button added to top navigation bar to use/not use ESP8266 data in log file.
