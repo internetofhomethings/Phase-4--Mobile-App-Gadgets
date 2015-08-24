@@ -110,7 +110,9 @@ Data is saved in CSV format every time a new GPS data set is received. The follo
 </table>
 
 Phase 4: Mobile App Gadgets:  August 23, 2015
+
 Changes:
+
 1. Three real-time data visualization screens added.
 ---> 1. Speedometer
 ---> 2. Clock
